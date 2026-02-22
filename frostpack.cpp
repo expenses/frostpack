@@ -1,11 +1,11 @@
-#include <cstdio>
-#include <vector>
-#include <cstdint>
-#include <fstream>
 #include <algorithm>
-#include <random>
 #include <array>
 #include <cfloat>
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <random>
+#include <vector>
 
 struct Vec2 {
     float x;
@@ -67,8 +67,8 @@ static bool segments_intersect(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
     const auto d1 = cross2d_points(b, a, d, a);
     const auto d2 = cross2d_points(d, c, a, c);
     const auto d3 = cross2d_points(d, c, b, c);
-    return (((d0 > 0 && d1 < 0) || (d0 < 0 && d1 > 0)) &&
-            ((d2 > 0 && d3 < 0) || (d2 < 0 && d3 > 0)));
+    return (
+        ((d0 > 0 && d1 < 0) || (d0 < 0 && d1 > 0)) && ((d2 > 0 && d3 < 0) || (d2 < 0 && d3 > 0)));
 }
 
 bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 half_size) {
@@ -95,7 +95,8 @@ bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 ha
     }
 
     // Any triangle edge crosses any box edge?
-    const std::array<std::pair<Vec2, Vec2>, 3> tri_edges = {{{tri[0], tri[1]}, {tri[1], tri[2]}, {tri[2], tri[0]}}};
+    const std::array<std::pair<Vec2, Vec2>, 3> tri_edges = {
+        {{tri[0], tri[1]}, {tri[1], tri[2]}, {tri[2], tri[0]}}};
     for (const auto& [ta, tb] : tri_edges) {
         for (size_t i = 0; i < 4; i++) {
             if (segments_intersect(ta, tb, box_corners[i], box_corners[(i + 1) % 4]))
@@ -112,8 +113,8 @@ BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     auto x_max = -FLT_MAX;
     auto y_max = -FLT_MAX;
 
-    for (const auto& tri: tris) {
-        for (const auto& v: tri) {
+    for (const auto& tri : tris) {
+        for (const auto& v : tri) {
             x_min = std::min(x_min, v.x);
             y_min = std::min(y_min, v.y);
             x_max = std::max(x_max, v.x);
@@ -127,9 +128,9 @@ BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     const auto y_max_i = int(round(y_max)) + 1;
 
     BitArray2D mask;
-    mask.width  = uint32_t(x_max_i - x_min_i);
+    mask.width = uint32_t(x_max_i - x_min_i);
     mask.height = uint32_t(y_max_i - y_min_i);
-    mask.data   = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
+    mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
 
     for (const auto& t : tris) {
         const auto tri_x_min = int(round(std::min({t[0].x, t[1].x, t[2].x}))) - 1;
@@ -156,20 +157,24 @@ BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
 
 bool check_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t x, uint32_t y) {
     uint32_t chunk_offset = x / 64;
-    uint32_t bit_offset   = x % 64;
+    uint32_t bit_offset = x % 64;
 
-    // 'y + mask_y < atlas.height' means that we don't check rows that go off the bottom edge.
+    // 'y + mask_y < atlas.height' means that we don't check rows that go off the
+    // bottom edge.
     for (uint32_t mask_y = 0; mask_y < mask.height && y + mask_y < atlas.height; mask_y++) {
         for (uint32_t mask_x = 0; mask_x < mask.width_in_chunks(); mask_x++) {
             auto mask_chunk = mask.get_chunk_const(mask_x, mask_y);
 
             // Low chunk: mask bits shifted into position
-            if (atlas.get_chunk_const(chunk_offset + mask_x, y + mask_y) & (mask_chunk << bit_offset)) {
+            if (atlas.get_chunk_const(chunk_offset + mask_x, y + mask_y) &
+                (mask_chunk << bit_offset)) {
                 return false;
             }
 
             // High chunk: bits that spilled over the 64-bit boundary
-            if (bit_offset > 0 && atlas.get_chunk_const(chunk_offset + mask_x + 1, y + mask_y) & (mask_chunk >> (64 - bit_offset))) {
+            if (bit_offset > 0 &&
+                atlas.get_chunk_const(chunk_offset + mask_x + 1, y + mask_y) &
+                    (mask_chunk >> (64 - bit_offset))) {
                 return false;
             }
         }
@@ -182,7 +187,7 @@ UVec2 find_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t l
     for (uint32_t y = last_y; y < atlas.height; y++) {
         for (uint32_t x = 0; x <= atlas.width - mask.width; x++) {
             if (check_placement(atlas, mask, x, y)) {
-                return { x, y };
+                return {x, y};
             }
         }
     }
@@ -197,15 +202,10 @@ void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location) {
         for (uint32_t x = 0; x < mask.width_in_chunks(); x++) {
             auto mask_chunk = mask.get_chunk_const(x, y);
 
-            atlas.get_chunk(
-                chunk_offset + x,
-                location.y + y
-            ) |= mask_chunk << bit_offset;
+            atlas.get_chunk(chunk_offset + x, location.y + y) |= mask_chunk << bit_offset;
             if (bit_offset > 0) {
-                atlas.get_chunk(
-                    chunk_offset + x + 1,
-                    location.y + y
-                ) |= mask_chunk >> (64 - bit_offset);
+                atlas.get_chunk(chunk_offset + x + 1, location.y + y) |=
+                    mask_chunk >> (64 - bit_offset);
             }
         }
     }
@@ -226,7 +226,7 @@ std::vector<UVec2> place_masks(BitArray2D& atlas, const std::vector<BitArray2D>&
         const auto& mask = masks[i];
 
         if (mask.width + mask.height != last_perim) {
-            last_y      = 0;
+            last_y = 0;
             last_perim = mask.width + mask.height;
         }
 
@@ -239,7 +239,14 @@ std::vector<UVec2> place_masks(BitArray2D& atlas, const std::vector<BitArray2D>&
 
         last_y = location.y;
 
-        printf("%zu/%zu - %ux%u @ %ux%u\n", i, masks.size(), mask.width, mask.height, location.x, location.y);
+        printf(
+            "%zu/%zu - %ux%u @ %ux%u\n",
+            i,
+            masks.size(),
+            mask.width,
+            mask.height,
+            location.x,
+            location.y);
         copy_mask(atlas, mask, location);
         locations.push_back(location);
     }
@@ -249,19 +256,17 @@ std::vector<UVec2> place_masks(BitArray2D& atlas, const std::vector<BitArray2D>&
 
 uint32_t max_mask_width(const std::vector<BitArray2D>& masks) {
     uint width = 0;
-    for (const auto& mask: masks) {
+    for (const auto& mask : masks) {
         width = std::max(width, mask.width);
     }
     return width;
 }
 
-
 void write_colored_ppm(
     const char* path,
     const BitArray2D& atlas,
     const std::vector<BitArray2D>& masks,
-    const std::vector<UVec2>& locations)
-{
+    const std::vector<UVec2>& locations) {
     std::vector<uint8_t> img(atlas.width * atlas.height * 3, 0);
 
     std::mt19937 rng(42);
@@ -272,7 +277,7 @@ void write_colored_ppm(
         auto g = uint8_t(dist(rng));
         auto b = uint8_t(dist(rng));
         const auto& mask = masks[i];
-        const auto& loc  = locations[i];
+        const auto& loc = locations[i];
         for (uint32_t y = 0; y < mask.height; y++) {
             for (uint32_t x = 0; x < mask.width; x++) {
                 if (mask.get(x, y)) {
@@ -292,7 +297,6 @@ void write_colored_ppm(
 
 int main(int argc, char** argv) {
     std::vector<BitArray2D> masks;
-
 
     /*for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 3; j++) {
@@ -330,9 +334,6 @@ int main(int argc, char** argv) {
 
     }*/
 
-
-
-
     for (auto i = 1; i < argc; i++) {
         const auto filepath = argv[i];
 
@@ -344,7 +345,7 @@ int main(int argc, char** argv) {
 
         BitArray2D mask;
         stream.read(reinterpret_cast<char*>(&mask.height), 4);
-        stream.read(reinterpret_cast<char*>(&mask.width),  4);
+        stream.read(reinterpret_cast<char*>(&mask.width), 4);
         mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
 
         for (uint32_t y = 0; y < mask.height; y++) {
