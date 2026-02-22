@@ -294,7 +294,7 @@ int main(int argc, char** argv) {
     std::vector<BitArray2D> masks;
 
 
-    for (int i = 0; i < 1000; i++) {
+    /*for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 3; j++) {
             masks.push_back(raster_island({
                 {{
@@ -307,7 +307,7 @@ int main(int argc, char** argv) {
                     {4, 50},
                     {50, 4}
                 }}
-                
+
             }));
         }
 
@@ -328,7 +328,7 @@ int main(int argc, char** argv) {
         }));
         }
 
-    }
+    }*/
 
 
 
@@ -364,7 +364,7 @@ int main(int argc, char** argv) {
     }
 
     const auto max_width = max_mask_width(masks);
-    const uint32_t atlas_width = 2048 << 2;
+    const uint32_t atlas_width = 4096;
 
     if (max_width > atlas_width) {
         printf("%u > %u\n", max_width, atlas_width);
