@@ -25,8 +25,6 @@ struct BitArray2D {
     // new coordinates.
     int x_min;
     int y_min;
-    // Used so that the index of the island can still be accessed after sorting.
-    uint32_t island_index;
     std::vector<uint64_t> data;
 
     uint32_t width_in_chunks() const {
@@ -220,55 +218,36 @@ void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location) {
     }
 }
 
-void sort_masks(std::vector<BitArray2D>& masks) {
-    std::sort(masks.begin(), masks.end(), [](const auto& a, const auto& b) {
-        return a.width + a.height > b.width + b.height;
-    });
-}
-
-std::vector<UVec2> place_masks(BitArray2D& atlas, const std::vector<BitArray2D>& masks) {
-    std::vector<UVec2> locations;
+struct Atlas {
+    BitArray2D array;
     uint32_t last_perim = 0;
     uint32_t last_y = 0;
 
-    for (size_t i = 0; i < masks.size(); i++) {
-        const auto& mask = masks[i];
-
+    UVec2 place(const BitArray2D& mask) {
         if (mask.width + mask.height != last_perim) {
             last_y = 0;
             last_perim = mask.width + mask.height;
         }
 
-        auto location = find_placement(atlas, mask, last_y);
+        auto location = find_placement(array, mask, last_y);
         auto end_height = location.y + mask.height;
-        if (end_height > atlas.height) {
-            atlas.data.resize(atlas.width_in_chunks() * end_height);
-            atlas.height = end_height;
+        if (end_height > array.height) {
+            array.data.resize(array.width_in_chunks() * end_height);
+            array.height = end_height;
         }
+
+        copy_mask(array, mask, location);
 
         last_y = location.y;
 
-        printf(
-            "%zu/%zu - %ux%u @ %ux%u\n",
-            i,
-            masks.size(),
-            mask.width,
-            mask.height,
-            location.x,
-            location.y);
-        copy_mask(atlas, mask, location);
-        locations.push_back(location);
+        return location;
     }
+};
 
-    return locations;
-}
-
-uint32_t max_mask_width(const std::vector<BitArray2D>& masks) {
-    uint width = 0;
-    for (const auto& mask : masks) {
-        width = std::max(width, mask.width);
-    }
-    return width;
+void sort_masks(std::vector<BitArray2D>& masks) {
+    std::sort(masks.begin(), masks.end(), [](const auto& a, const auto& b) {
+        return a.width + a.height > b.width + b.height;
+    });
 }
 
 void write_colored_ppm(
@@ -373,8 +352,12 @@ int main(int argc, char** argv) {
         masks.push_back(mask);
     }
 
-    const auto max_width = max_mask_width(masks);
     const uint32_t atlas_width = 4096;
+
+    uint max_width = 0;
+    for (const auto& mask : masks) {
+        max_width = std::max(max_width, mask.width);
+    }
 
     if (max_width > atlas_width) {
         printf("%u > %u\n", max_width, atlas_width);
@@ -383,13 +366,29 @@ int main(int argc, char** argv) {
 
     sort_masks(masks);
 
-    BitArray2D atlas;
-    atlas.width = atlas_width;
-    atlas.height = 1;
-    atlas.data = std::vector<uint64_t>(atlas.width_in_chunks());
+    Atlas atlas;
+    atlas.array.width = atlas_width;
+    atlas.array.height = 1;
+    atlas.array.data = std::vector<uint64_t>(atlas.array.width_in_chunks());
 
-    const auto locations = place_masks(atlas, masks);
+    std::vector<UVec2> locations;
 
-    write_colored_ppm("output.ppm", atlas, masks, locations);
+    for (size_t i = 0; i < masks.size(); i++) {
+        const auto& mask = masks[i];
+
+        auto location = atlas.place(mask);
+
+        printf(
+            "%zu/%zu - %ux%u @ %ux%u\n",
+            i,
+            masks.size(),
+            mask.width,
+            mask.height,
+            location.x,
+            location.y);
+        locations.push_back(location);
+    }
+
+    write_colored_ppm("output.ppm", atlas.array, masks, locations);
     return 0;
 }
