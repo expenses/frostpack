@@ -20,6 +20,13 @@ struct UVec2 {
 struct BitArray2D {
     uint32_t width;
     uint32_t height;
+    // The min values of the mask with respect to the original
+    // island triangles. `location + original_uv - (x_min, y_min)` will give the correct
+    // new coordinates.
+    int x_min;
+    int y_min;
+    // Used so that the index of the island can still be accessed after sorting.
+    uint32_t island_index;
     std::vector<uint64_t> data;
 
     uint32_t width_in_chunks() const {
@@ -131,6 +138,8 @@ BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     mask.width = uint32_t(x_max_i - x_min_i);
     mask.height = uint32_t(y_max_i - y_min_i);
     mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
+    mask.x_min = x_min_i;
+    mask.y_min = y_min_i;
 
     for (const auto& t : tris) {
         const auto tri_x_min = int(round(std::min({t[0].x, t[1].x, t[2].x}))) - 1;
