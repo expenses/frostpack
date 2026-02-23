@@ -9,7 +9,8 @@ PYBIND11_MODULE(frostpack, m) {
         .def("sort_key", &frostpack::BitArray2D::sort_key)
         .def_readonly("width", &frostpack::BitArray2D::width)
         .def_readonly("height", &frostpack::BitArray2D::height)
-        .def_readonly("uv_min", &frostpack::BitArray2D::uv_min);
+        .def_readonly("uv_min", &frostpack::BitArray2D::uv_min)
+        .def("get", &frostpack::BitArray2D::get);
 
     py::class_<frostpack::Atlas>(m, "Atlas")
         .def(py::init<uint32_t>())
