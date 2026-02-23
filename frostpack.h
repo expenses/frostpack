@@ -55,7 +55,7 @@ struct BitArray2D {
 
 // The equiv of cross2d(x - y, z - w)
 // where cross2d is a.x * b.y - a.y * b.x.
-float cross2d_points(Vec2 x, Vec2 y, Vec2 z, Vec2 w) {
+static float cross2d_points(Vec2 x, Vec2 y, Vec2 z, Vec2 w) {
     const Vec2 a = {x.x - y.x, x.y - y.y};
     const Vec2 b = {z.x - w.x, z.y - w.y};
     return a.x * b.y - a.y * b.x;
@@ -79,7 +79,7 @@ static bool segments_intersect(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
         ((d0 > 0 && d1 < 0) || (d0 < 0 && d1 > 0)) && ((d2 > 0 && d3 < 0) || (d2 < 0 && d3 > 0)));
 }
 
-bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 half_size) {
+static bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 half_size) {
     const Vec2 b_min = {box_center.x - half_size.x, box_center.y - half_size.y};
     const Vec2 b_max = {box_center.x + half_size.x, box_center.y + half_size.y};
 
@@ -115,7 +115,7 @@ bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 ha
     return false;
 }
 
-BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
+static BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     auto x_min = FLT_MAX;
     auto y_min = FLT_MAX;
     auto x_max = -FLT_MAX;
@@ -164,7 +164,8 @@ BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     return mask;
 }
 
-bool check_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t x, uint32_t y) {
+static bool
+check_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t x, uint32_t y) {
     uint32_t chunk_offset = x / 64;
     uint32_t bit_offset = x % 64;
 
@@ -191,7 +192,7 @@ bool check_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t x
     return true;
 }
 
-UVec2 find_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t last_y) {
+static UVec2 find_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t last_y) {
     // check every row, even if it goes off the bottom edge (we can just resize)
     for (uint32_t y = last_y; y < atlas.height; y++) {
         for (uint32_t x = 0; x <= atlas.width - mask.width; x++) {
@@ -203,7 +204,7 @@ UVec2 find_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t l
     return {0, atlas.height};
 }
 
-void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location) {
+static void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location) {
     auto chunk_offset = location.x / 64;
     auto bit_offset = location.x % 64;
 

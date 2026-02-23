@@ -41,10 +41,11 @@ int main(int argc, char** argv) {
 
     for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 3; j++) {
-            masks.push_back(frostpack::raster_island(
-                {{{{50, 50}, {4, 50}, {50, 4}}}, {{{4, 4}, {4, 50}, {50, 4}}}
+            masks.push_back(
+                frostpack::raster_island(
+                    {{{{50, 50}, {4, 50}, {50, 4}}}, {{{4, 4}, {4, 50}, {50, 4}}}
 
-                }));
+                    }));
         }
 
         for (int j = 0; j < 10; j++) {
