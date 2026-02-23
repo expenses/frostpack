@@ -16,7 +16,7 @@ struct BitArray2D {
     // The min values of the mask with respect to the original
     // island triangles. `location + original_uv - uv_min` will give the correct
     // new coordinates.
-    Vec2 uv_min = {0,0};
+    Vec2 uv_min = {0, 0};
     std::vector<uint64_t> data;
 
     BitArray2D(uint32_t width_, uint32_t height_) : width(width_), height(height_) {
@@ -178,7 +178,7 @@ check_placement(const BitArray2D& atlas, const BitArray2D& mask, uint32_t x, uin
             }
 
             // High chunk: bits that spilled over the 64-bit boundary
-            if (bit_offset > 0 &&
+            if (bit_offset > 0 && chunk_offset + mask_x + 1 < atlas.width_in_chunks() &&
                 atlas.get_chunk_const(chunk_offset + mask_x + 1, y + mask_y) &
                     (mask_chunk >> (64 - bit_offset))) {
                 return false;
@@ -209,7 +209,7 @@ static void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location)
             auto mask_chunk = mask.get_chunk_const(x, y);
 
             atlas.get_chunk(chunk_offset + x, location[1] + y) |= mask_chunk << bit_offset;
-            if (bit_offset > 0) {
+            if (bit_offset > 0 && chunk_offset + x + 1 < atlas.width_in_chunks()) {
                 atlas.get_chunk(chunk_offset + x + 1, location[1] + y) |=
                     mask_chunk >> (64 - bit_offset);
             }
@@ -221,8 +221,8 @@ struct Atlas {
     BitArray2D array;
     uint32_t last_perim = 0;
     uint32_t last_y = 0;
-    
-    Atlas(uint32_t width): array(width, 1) {}
+
+    Atlas(uint32_t width) : array(width, 1) {}
 
     UVec2 place(const BitArray2D& mask) {
         if (mask.sort_key() != last_perim) {
