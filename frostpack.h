@@ -7,15 +7,8 @@
 
 namespace frostpack {
 
-struct Vec2 {
-    float x;
-    float y;
-};
-
-struct UVec2 {
-    uint32_t x;
-    uint32_t y;
-};
+typedef std::array<float, 2> Vec2;
+typedef std::array<uint32_t, 2> UVec2;
 
 struct BitArray2D {
     uint32_t width;
@@ -56,9 +49,9 @@ struct BitArray2D {
 // The equiv of cross2d(x - y, z - w)
 // where cross2d is a.x * b.y - a.y * b.x.
 static float cross2d_points(Vec2 x, Vec2 y, Vec2 z, Vec2 w) {
-    const Vec2 a = {x.x - y.x, x.y - y.y};
-    const Vec2 b = {z.x - w.x, z.y - w.y};
-    return a.x * b.y - a.y * b.x;
+    const Vec2 a = {x[0] - y[0], x[1] - y[1]};
+    const Vec2 b = {z[0] - w[0], z[1] - w[1]};
+    return a[0] * b[1] - a[1] * b[0];
 }
 
 static bool point_in_tri(Vec2 p, Vec2 a, Vec2 b, Vec2 c) {
@@ -80,19 +73,19 @@ static bool segments_intersect(Vec2 a, Vec2 b, Vec2 c, Vec2 d) {
 }
 
 static bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, Vec2 half_size) {
-    const Vec2 b_min = {box_center.x - half_size.x, box_center.y - half_size.y};
-    const Vec2 b_max = {box_center.x + half_size.x, box_center.y + half_size.y};
+    const Vec2 b_min = {box_center[0] - half_size[0], box_center[1] - half_size[1]};
+    const Vec2 b_max = {box_center[0] + half_size[0], box_center[1] + half_size[1]};
 
     const std::array<Vec2, 4> box_corners = {
         b_min,
-        Vec2{b_min.x, b_max.y},
+        Vec2{b_min[0], b_max[1]},
         b_max,
-        Vec2{b_max.x, b_min.y},
+        Vec2{b_max[0], b_min[1]},
     };
 
     // Any triangle vertex inside the box?
     for (const auto& v : tri) {
-        if (v.x > b_min.x && v.x < b_max.x && v.y > b_min.y && v.y < b_max.y)
+        if (v[0] > b_min[0] && v[0] < b_max[0] && v[1] > b_min[1] && v[1] < b_max[1])
             return true;
     }
 
@@ -115,19 +108,17 @@ static bool tri_intersects_box(const std::array<Vec2, 3>& tri, Vec2 box_center, 
     return false;
 }
 
-static BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
+static BitArray2D raster_island(const std::vector<Vec2>& vertices) {
     auto x_min = FLT_MAX;
     auto y_min = FLT_MAX;
     auto x_max = -FLT_MAX;
     auto y_max = -FLT_MAX;
 
-    for (const auto& tri : tris) {
-        for (const auto& v : tri) {
-            x_min = std::min(x_min, v.x);
-            y_min = std::min(y_min, v.y);
-            x_max = std::max(x_max, v.x);
-            y_max = std::max(y_max, v.y);
-        }
+    for (const auto& v : vertices) {
+        x_min = std::min(x_min, v[0]);
+        y_min = std::min(y_min, v[1]);
+        x_max = std::max(x_max, v[0]);
+        y_max = std::max(y_max, v[1]);
     }
 
     const auto x_min_i = int(round(x_min)) - 1;
@@ -141,11 +132,15 @@ static BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
     mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
     mask.uv_min = {float(x_min_i), float(y_min_i)};
 
-    for (const auto& t : tris) {
-        const auto tri_x_min = int(round(std::min({t[0].x, t[1].x, t[2].x}))) - 1;
-        const auto tri_x_max = int(round(std::max({t[0].x, t[1].x, t[2].x}))) + 1;
-        const auto tri_y_min = int(round(std::min({t[0].y, t[1].y, t[2].y}))) - 1;
-        const auto tri_y_max = int(round(std::max({t[0].y, t[1].y, t[2].y}))) + 1;
+    for (size_t i = 0; i < vertices.size(); i += 3) {
+        const auto a = vertices[i];
+        const auto b = vertices[i + 1];
+        const auto c = vertices[i + 2];
+
+        const auto tri_x_min = int(round(std::min({a[0], b[0], c[0]}))) - 1;
+        const auto tri_x_max = int(round(std::max({a[0], b[0], c[0]}))) + 1;
+        const auto tri_y_min = int(round(std::min({a[1], b[1], c[1]}))) - 1;
+        const auto tri_y_max = int(round(std::max({a[1], b[1], c[1]}))) + 1;
 
         for (int y = tri_y_min; y < tri_y_max; y++) {
             for (int x = tri_x_min; x < tri_x_max; x++) {
@@ -153,7 +148,7 @@ static BitArray2D raster_island(const std::vector<std::array<Vec2, 3>>& tris) {
                 const auto mask_y = uint32_t(y - y_min_i);
 
                 if (!mask.get(mask_x, mask_y)) {
-                    if (tri_intersects_box(t, {x + 0.5f, y + 0.5f}, {1.0f, 1.0f})) {
+                    if (tri_intersects_box({a, b, c}, {x + 0.5f, y + 0.5f}, {1.0f, 1.0f})) {
                         mask.set(mask_x, mask_y);
                     }
                 }
@@ -205,16 +200,16 @@ static UVec2 find_placement(const BitArray2D& atlas, const BitArray2D& mask, uin
 }
 
 static void copy_mask(BitArray2D& atlas, const BitArray2D& mask, UVec2 location) {
-    auto chunk_offset = location.x / 64;
-    auto bit_offset = location.x % 64;
+    auto chunk_offset = location[0] / 64;
+    auto bit_offset = location[0] % 64;
 
     for (uint32_t y = 0; y < mask.height; y++) {
         for (uint32_t x = 0; x < mask.width_in_chunks(); x++) {
             auto mask_chunk = mask.get_chunk_const(x, y);
 
-            atlas.get_chunk(chunk_offset + x, location.y + y) |= mask_chunk << bit_offset;
+            atlas.get_chunk(chunk_offset + x, location[1] + y) |= mask_chunk << bit_offset;
             if (bit_offset > 0) {
-                atlas.get_chunk(chunk_offset + x + 1, location.y + y) |=
+                atlas.get_chunk(chunk_offset + x + 1, location[1] + y) |=
                     mask_chunk >> (64 - bit_offset);
             }
         }
@@ -233,7 +228,7 @@ struct Atlas {
         }
 
         auto location = find_placement(array, mask, last_y);
-        auto end_height = location.y + mask.height;
+        auto end_height = location[1] + mask.height;
         if (end_height > array.height) {
             array.data.resize(array.width_in_chunks() * end_height);
             array.height = end_height;
@@ -241,7 +236,7 @@ struct Atlas {
 
         copy_mask(array, mask, location);
 
-        last_y = location.y;
+        last_y = location[1];
 
         return location;
     }

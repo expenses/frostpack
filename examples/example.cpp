@@ -22,7 +22,7 @@ void write_colored_ppm(
         for (uint32_t y = 0; y < mask.height; y++) {
             for (uint32_t x = 0; x < mask.width; x++) {
                 if (mask.get(x, y)) {
-                    auto idx = ((loc.y + y) * atlas.width + (loc.x + x)) * 3;
+                    auto idx = ((loc[1] + y) * atlas.width + (loc[0] + x)) * 3;
                     img[idx + 0] = r;
                     img[idx + 1] = g;
                     img[idx + 2] = b;
@@ -42,15 +42,12 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 1000; i++) {
         for (int j = 0; j < 3; j++) {
             masks.push_back(
-                frostpack::raster_island(
-                    {{{{50, 50}, {4, 50}, {50, 4}}}, {{{4, 4}, {4, 50}, {50, 4}}}
-
-                    }));
+                frostpack::raster_island({{50, 50}, {4, 50}, {50, 4}, {4, 4}, {4, 50}, {50, 4}}));
         }
 
         for (int j = 0; j < 10; j++) {
-            masks.push_back(frostpack::raster_island({{{{50, 50}, {40, 50}, {50, 40}}}}));
-            masks.push_back(frostpack::raster_island({{{{500, 500}, {495, 500}, {500, 495}}}}));
+            masks.push_back(frostpack::raster_island({{50, 50}, {40, 50}, {50, 40}}));
+            masks.push_back(frostpack::raster_island({{500, 500}, {495, 500}, {500, 495}}));
         }
     }
 
@@ -117,8 +114,8 @@ int main(int argc, char** argv) {
             masks.size(),
             mask.width,
             mask.height,
-            location.x,
-            location.y);
+            location[0],
+            location[1]);
         locations.push_back(location);
     }
 
