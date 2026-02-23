@@ -1,7 +1,10 @@
 import bpy
 import bmesh
+import math
 from collections import defaultdict
 from mathutils import Vector
+import numpy as np
+
 
 # Find UV islands consisting on triangles. Uses a UV-space point cache.
 # Not ideal, but seems to get the job done well enough.
@@ -46,6 +49,7 @@ def find_islands(bm):
             islands.append(island)
     return islands
 
+
 # Hacky nonsense for finding some texel density stuff to scale things correctly. REWRITE!
 def island_texel_density(island, uv_layer):
     world_area = 0.0
@@ -63,18 +67,19 @@ def island_texel_density(island, uv_layer):
 
     return math.sqrt(uv_area / world_area)
 
-def render_colored_atlas(placements, atlas_size):
+
+def render_colored_atlas(placements, img):
     import random
-    img = np.zeros((atlas_size, atlas_size, 3), dtype=np.uint8)
-    rng = random.Random(42)
 
     for _idx, mask, y, x in placements:
-        color = np.array([rng.randint(80, 255) for _ in range(3)], dtype=np.uint8)
-        mask_height, mask_width = mask.shape
-        region = img[y:y + mask_height, x:x + mask_width]
-        region[mask] = color
+        color = np.array(
+            [random.uniform(0.1, 1.0) for _ in range(3)] + [1.0], dtype=np.float32
+        )
+        for my in range(mask.height):
+            for mx in range(mask.width):
+                if mask.get(mx, my):
+                    img[y + my, x + mx] = color
 
-    return Image.fromarray(img)
 
 import frostpack
 
@@ -82,33 +87,58 @@ for obj in bpy.context.selected_objects:
     bm = bmesh.from_edit_mesh(obj.data)
     uv_layer = bm.loops.layers.uv.active
     islands = find_islands(bm)
+
+    print("found islands")
     sum = 0
-    
+
     masks_and_islands = []
-    
+
     scale = 1024
-    
+
     for i, island in enumerate(islands):
-        tris = [loop[uv_layer].uv * scale  for tri in island for loop in tri]
+        tris = [loop[uv_layer].uv * scale for tri in island for loop in tri]
         mask = frostpack.raster_island(tris)
         masks_and_islands.append((mask, i))
-        print(i)
-    masks_and_islands = sorted(masks_and_islands, key = lambda m: -m[0].sort_key())
-    
+    masks_and_islands = sorted(masks_and_islands, key=lambda m: -m[0].sort_key())
+
+    print("Got masks")
+
     atlas = frostpack.Atlas(1024)
-    
+
     locations = []
-    
+
     for mask, i in masks_and_islands:
         locations.append(atlas.place(mask))
-    
+
+    print("got locations")
+
     for i, (mask, index) in enumerate(masks_and_islands):
         location = locations[i]
         island = islands[index]
         for tri in island:
             for loop in tri:
-                loop[uv_layer].uv = Vector([
-                    (location[0] + loop[uv_layer].uv[0] * scale - mask.uv_min[0]) / atlas.array.width,
-                    (location[1] + loop[uv_layer].uv[1] * scale - mask.uv_min[1]) / atlas.array.height
-                ])
-    bmesh.update_edit_mesh(obj.data)       
+                loop[uv_layer].uv = Vector(
+                    [
+                        (location[0] + loop[uv_layer].uv[0] * scale - mask.uv_min[0])
+                        / atlas.array.width,
+                        (location[1] + loop[uv_layer].uv[1] * scale - mask.uv_min[1])
+                        / atlas.array.height,
+                    ]
+                )
+
+    print("Set UVs")
+
+    bmesh.update_edit_mesh(obj.data)
+
+    placements = [
+        (i, mask, locations[i][1], locations[i][0])
+        for i, (mask, _) in enumerate(masks_and_islands)
+    ]
+    img = np.zeros((atlas.array.height, atlas.array.width, 4), dtype=np.float32)
+    render_colored_atlas(placements, img)
+
+    blender_img = bpy.data.images.new(
+        "UV Atlas", width=atlas.array.width, height=atlas.array.height
+    )
+    blender_img.pixels = img.ravel()
+    blender_img.pack()
