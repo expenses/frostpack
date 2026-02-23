@@ -3,7 +3,7 @@
 #include <fstream>
 #include <random>
 
-void write_colored_ppm(
+static void write_colored_ppm(
     const char* path,
     const frostpack::BitArray2D& atlas,
     const std::vector<frostpack::BitArray2D>& masks,
@@ -60,10 +60,11 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        frostpack::BitArray2D mask;
-        stream.read(reinterpret_cast<char*>(&mask.height), 4);
-        stream.read(reinterpret_cast<char*>(&mask.width), 4);
-        mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
+        uint32_t width, height;
+        stream.read(reinterpret_cast<char*>(&height), 4);
+        stream.read(reinterpret_cast<char*>(&width), 4);
+
+        frostpack::BitArray2D mask(width, height);
 
         for (uint32_t y = 0; y < mask.height; y++) {
             for (uint32_t x = 0; x < mask.width; x++) {
@@ -96,10 +97,7 @@ int main(int argc, char** argv) {
         return a.sort_key() > b.sort_key();
     });
 
-    frostpack::Atlas atlas;
-    atlas.array.width = atlas_width;
-    atlas.array.height = 1;
-    atlas.array.data = std::vector<uint64_t>(atlas.array.width_in_chunks());
+    frostpack::Atlas atlas(atlas_width);
 
     std::vector<frostpack::UVec2> locations;
 

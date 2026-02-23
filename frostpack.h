@@ -16,8 +16,12 @@ struct BitArray2D {
     // The min values of the mask with respect to the original
     // island triangles. `location + original_uv - uv_min` will give the correct
     // new coordinates.
-    Vec2 uv_min;
+    Vec2 uv_min = {0,0};
     std::vector<uint64_t> data;
+
+    BitArray2D(uint32_t width_, uint32_t height_) : width(width_), height(height_) {
+        data = std::vector<uint64_t>(width_in_chunks() * height);
+    }
 
     uint32_t width_in_chunks() const {
         return (width + 63) / 64;
@@ -126,10 +130,7 @@ static BitArray2D raster_island(const std::vector<Vec2>& vertices) {
     const auto x_max_i = int(round(x_max)) + 1;
     const auto y_max_i = int(round(y_max)) + 1;
 
-    BitArray2D mask;
-    mask.width = uint32_t(x_max_i - x_min_i);
-    mask.height = uint32_t(y_max_i - y_min_i);
-    mask.data = std::vector<uint64_t>(mask.width_in_chunks() * mask.height);
+    BitArray2D mask(uint32_t(x_max_i - x_min_i), uint32_t(y_max_i - y_min_i));
     mask.uv_min = {float(x_min_i), float(y_min_i)};
 
     for (size_t i = 0; i < vertices.size(); i += 3) {
@@ -220,6 +221,8 @@ struct Atlas {
     BitArray2D array;
     uint32_t last_perim = 0;
     uint32_t last_y = 0;
+    
+    Atlas(uint32_t width): array(width, 1) {}
 
     UVec2 place(const BitArray2D& mask) {
         if (mask.sort_key() != last_perim) {
